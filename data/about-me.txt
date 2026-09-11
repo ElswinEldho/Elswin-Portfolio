@@ -1,0 +1,57 @@
+Contact Information: Elswin P Eldho, Junior Developer, elswineldho2@gmail.com
++91 8086364948
+github.com/ElswinEldho
+linkedin.com/in/elswinpeldho
+https://elswineldho.github.io/Portfolio/
+
+Professional Summary
+Computer Science Engineering graduate with experience as an Junior Developer, and ESG Consultant. Skilled in developing ESG and sustainability platforms, carbon accounting solutions, sustainability reporting, and REST APIs while supporting client demonstrations, solution design, and business requirements. Passionate about combining technology and sustainability to deliver innovative digital solutions that drive ESG transformation.
+
+Education
+Education & Studies: Elswin P Eldho studied B.Tech in Computer Science and Engineering at Adi Shankara Institute of Engineering and Technology, Kalady (06/2022 – 05/2026, CGPA: 8.58). He completed Higher Secondary education at Brahmanandodayam Kalady (06/2020 – 05/2022, Percentage: 96.41%).
+
+Projects
+
+1. AI Powered Speech Analysis Tool for Speech Therapists
+Elswin developed a Django-based web application to assist therapists in diagnosing speech disorders such as dysarthria. Integrated real-time audio capture and MFCC feature extraction using Librosa, enabling seamless voice input analysis. Engineered a Machine Learning (Random Forest) model with 98% accuracy and utilized Scikit-learn for robust classification. Designed clear visualizations of audio features with Matplotlib and deployed a responsive, secure clinical interface tailored for therapist usability. Presented at ICIMRBE, April 4, 2025.
+
+2. Vendor-IQ, Vendor ESG Screening Platform 07/26 – 07/26
+VendorlQ is a Vendor ESG Assessment platform that enables organizations to evaluate, monitor, and manage the sustainability performance of their vendors. The platform provides a structured ESG questionnaire covering Environmental, Social, and Governance aspects, calculates ESG scores, assigns vendor risk classifications, and provides scorecards, improvement areas, and performance roadmaps. It also supports monthly assessments, monthly reports, annualized ESG reports, PDF generation, and historical performance tracking, helping organizations make informed decisions about vendor sustainability and ESG risk.
+
+3. AI-Driven Smart Agriculture with Soil Intelligence and Explainable AI
+Elswin developed an AI-powered and Machine Learning smart agriculture system using IoT sensors (ESP32) to collect real-time soil data and provide crop and fertilizer recommendations. Integrated SHAP and LIME for explainable predictions and built a full-stack solution with FastAPI and React/Streamlit, including a chatbot interface for user interaction.
+
+4. EnSoGo – Sustainability Readiness Intelligence Chatbot -Integrated
+Elswin developed a web application that scores organizations on sustainability and certification readiness using the SAM BRD v2.0 framework. Built the backend with Node.js and Express for Scope 1/2/3 emissions and scoring, the frontend with React + Vite + Tailwind featuring Recharts dashboards, and used MongoDB with Mongoose for data storage. Implemented JWT authentication. Tech: React, Vite, Tailwind, Node.js, Express, MongoDB, JWT.
+
+Professional Experience
+
+Junior Developer 08/2026 | Kakkanad,Kochi
+I’m a Junior Developer with experience in building web applications from business requirements and BRDs into complete, functional products. I work with React, Next.js, TypeScript, Node.js, and PostgreSQL, with hands-on experience in API development, database management, validation logic, ESG solutions, and reporting workflows. I enjoy solving technical problems, learning new technologies, and building scalable, user-friendly applications while continuously improving my development and communication skills.
+
+Internships
+
+Developer Intern Full Stack Developer | Building Intelligent ESG & Sustainability Platforms 04/2026 – 07/2026 | Kakkanad,India
+Full Stack Developer responsible for designing, developing, and maintaining end-to-end ESG and sustainability software solutions. I build scalable frontend and backend applications, develop secure APIs, implement carbon accounting and sustainability reporting modules, optimize system performance, integrate business workflows, and collaborate with cross-functional teams to deliver innovative, high-quality digital solutions that support organizations in achieving their sustainability goals.
+
+ESG Presales Consultant, SAM Corporate,Kakkanad 02/2026 | Kakkanad,India
+Supporting ESG Solutions & Client Engagement | Power BI Dashboard Development | Data Analysis & Upload | Excel Data Structuring | KPI & Target Research | CDPAnalysis Android App Development, Tech Maghi ,Adi Shankara Institute 11/2022 – 11/2022
+
+Skills
+
+Technical Skills
+•Programming Languages: Python, Javascript
+•Tools & Platforms: VS Code, GitHub, Docker, MS Excel, Power BI, BitBucket, Jira
+•Databases: MongoDB,PostgreSQL, Firebase
+•Technologies: ESG Analysis, Data Analysis, Machine Learning, IoT, REST APIs, Explainable AI
+
+Soft Skills
+Problem Solving, Analytical Thinking, Debugging, Strong Communication, Collaborative Teamwork
+
+Certifications
+•Prompt Engineering | Simplilearn
+•Power BI for Beginners | Simplilearn
+•Artificial Intelligence Workshop | IIT Palakkad
+•Salesforce, Agentforce on Trailhead
+•Oracle Cloud Infrastructure 2025 AI Foundation
+•Introduction to Artificial Intelligence | Infosys Springboard
