@@ -1,0 +1,216 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: #070a11;
+    color: #f8fafc;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.07) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.05) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+  section[id] {
+    scroll-margin-top: 80px;
+  }
+}
+
+/* ---------------------------------------------------- */
+/* Full-width layout — stretch to 100% of screen width  */
+/* ---------------------------------------------------- */
+.max-w-7xl {
+  max-width: 100% !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #070a11;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* ---------------------------------------------------- */
+/* 1. Page Load & Stagger Animations                    */
+/* ---------------------------------------------------- */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* ---------------------------------------------------- */
+/* 2. Scroll Reveal Utility                             */
+/* ---------------------------------------------------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1), transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-stagger-1 { transition-delay: 100ms; }
+.reveal-stagger-2 { transition-delay: 200ms; }
+.reveal-stagger-3 { transition-delay: 300ms; }
+.reveal-stagger-4 { transition-delay: 400ms; }
+
+/* ---------------------------------------------------- */
+/* 3. Glassmorphism & Premium Card Hover System         */
+/* ---------------------------------------------------- */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.35s ease,
+              box-shadow 0.35s ease,
+              background-color 0.35s ease;
+}
+
+.card-premium:hover {
+  transform: translateY(-4px);
+  background: rgba(30, 41, 59, 0.75);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 16px 36px -12px rgba(99, 102, 241, 0.2);
+}
+
+/* Icon Shift Micro-interaction on parent hover */
+.group:hover .icon-shift {
+  transform: translateX(3px) translateY(-2px);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---------------------------------------------------- */
+/* 4. Button Interactions                               */
+/* ---------------------------------------------------- */
+.btn-premium {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s ease,
+              background-color 0.2s ease;
+}
+
+.btn-premium:hover {
+  transform: translateY(-2px);
+}
+
+.btn-premium:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ---------------------------------------------------- */
+/* 5. AI Assistant Animations                           */
+/* ---------------------------------------------------- */
+/* Thinking state dots animation */
+.thinking-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #6366f1;
+  animation: pulseDot 1.4s infinite ease-in-out both;
+}
+
+.thinking-dot:nth-child(1) { animation-delay: 0s; }
+.thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pulseDot {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1.2); opacity: 1; }
+}
+
+/* Streaming Blinking Cursor */
+.streaming-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  background-color: #6366f1;
+  margin-left: 4px;
+  vertical-align: middle;
+  border-radius: 1px;
+  animation: cursor-blink 0.8s infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Ambient Mouse Follow Glow — applied on a separate non-interactive overlay */
+.hero-ambient-glow-overlay {
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(99, 102, 241, 0.12),
+    transparent 40%
+  );
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* ---------------------------------------------------- */
+/* 6. Accessibility & Reduced Motion                    */
+/* ---------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  
+  .card-premium:hover,
+  .btn-premium:hover {
+    transform: none !important;
+  }
+}
