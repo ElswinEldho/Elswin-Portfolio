@@ -20,6 +20,7 @@ _MODEL_INSTANCE = None
 def get_embedding_model(model_name="all-MiniLM-L6-v2"):
     """
     Reuse a single loaded model instance across multiple calls.
+    Returns None if SentenceTransformer fails to load (e.g. Application Control policy block).
     """
     global _MODEL_INSTANCE
     if _MODEL_INSTANCE is None:
@@ -33,8 +34,8 @@ def get_embedding_model(model_name="all-MiniLM-L6-v2"):
             finally:
                 sys.stderr = _stderr
         except Exception as e:
-            print(f"Error loading SentenceTransformer model '{model_name}': {e}")
-            raise e
+            print(f"Warning: Could not load SentenceTransformer model '{model_name}': {e}")
+            return None
     return _MODEL_INSTANCE
 
 def read_about_me(file_path):

@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 
 /**
- * Lightweight IntersectionObserver hook for scroll-triggered reveal animations.
- * Applies the 'is-visible' CSS class to elements matching selector or ref when in viewport.
+ * High-performance IntersectionObserver hook for scroll-triggered reveal animations.
+ * Applies the 'is-visible' CSS class to elements matching selector when entering the viewport.
+ * Optimizes GPU memory by removing transform hints after transition completes.
  */
 export function useScrollReveal(selector = '.reveal', deps = []) {
   useEffect(() => {
@@ -20,22 +21,32 @@ export function useScrollReveal(selector = '.reveal', deps = []) {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
-            observer.unobserve(entry.target);
+            const target = entry.target;
+            target.classList.add('is-visible');
+            
+            // Clean up will-change after transition completes to save GPU memory
+            const handleTransitionEnd = () => {
+              target.style.willChange = 'auto';
+              target.removeEventListener('transitionend', handleTransitionEnd);
+            };
+            target.addEventListener('transitionend', handleTransitionEnd, { once: true });
+
+            observer.unobserve(target);
           }
         });
       },
       {
-        threshold: 0.01,
-        rootMargin: '100px 0px 100px 0px',
+        threshold: 0.05,
+        rootMargin: '0px 0px -40px 0px',
       }
     );
 
     elements.forEach((el) => {
       const rect = el.getBoundingClientRect();
-      // If element is already in or near viewport, reveal immediately
-      if (rect.top < window.innerHeight + 100 && rect.bottom > -100) {
+      // If element is already visible in viewport on initial load, reveal immediately
+      if (rect.top < window.innerHeight - 40 && rect.bottom > 0) {
         el.classList.add('is-visible');
+        el.style.willChange = 'auto';
       } else {
         observer.observe(el);
       }
@@ -46,4 +57,3 @@ export function useScrollReveal(selector = '.reveal', deps = []) {
     };
   }, [selector, ...deps]);
 }
-

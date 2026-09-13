@@ -111,11 +111,70 @@ class VectorSearch:
             self.model = get_embedding_model(self.model_name)
         return self.model
 
+    def _tfidf_search(self, normalized_query, top_k=5, target_sections=None):
+        """
+        Pure-Python TF-IDF keyword search fallback.
+        Used when SentenceTransformer cannot be loaded (e.g. DLL load blocked by Application Control policy).
+        """
+        import collections
+        if target_sections is None:
+            target_sections = []
+
+        def tokenize(text):
+            return re.findall(r'\w+', text.lower())
+
+        query_tokens = tokenize(normalized_query)
+        if not query_tokens:
+            return [(0.0, chunk) for chunk in self.chunks[:top_k]]
+
+        doc_count = len(self.chunks)
+        if doc_count == 0:
+            return []
+
+        # Calculate Document Frequencies (DF)
+        df = collections.Counter()
+        doc_tokens_list = []
+        for chunk in self.chunks:
+            tokens = set(tokenize(chunk["text"]))
+            doc_tokens_list.append(tokenize(chunk["text"]))
+            for t in tokens:
+                df[t] += 1
+
+        # Calculate IDF values
+        idf = {}
+        for token, count in df.items():
+            idf[token] = math.log((doc_count + 1) / (count + 0.5)) + 1.0
+
+        # Score documents against query
+        scored_chunks = []
+        for idx, chunk in enumerate(self.chunks):
+            doc_tokens = doc_tokens_list[idx]
+            doc_tf = collections.Counter(doc_tokens)
+            doc_len = max(len(doc_tokens), 1)
+
+            score = 0.0
+            for qt in query_tokens:
+                if qt in doc_tf:
+                    tf_val = doc_tf[qt] / doc_len
+                    score += tf_val * idf.get(qt, 1.0)
+
+            # Boost score if chunk text matches target section requested by user
+            chunk_text_lower = chunk["text"].lower()
+            for sec in target_sections:
+                if chunk_text_lower.startswith(sec):
+                    score += 0.5
+                    break
+
+            scored_chunks.append((score, chunk))
+
+        scored_chunks.sort(key=lambda x: x[0], reverse=True)
+        return scored_chunks[:top_k]
+
     def search(self, query_text, top_k=5, min_similarity=0.25):
         """
         Embeds the question using all-MiniLM, computes cosine similarity
-        against every stored chunk, and returns the top_k results above
-        the min_similarity threshold. Includes typo normalization and section boosting.
+        against every stored chunk, and returns the top_k results.
+        Falls back to pure-Python TF-IDF search if model loading fails.
         """
         if not query_text or not query_text.strip():
             print("Error: Question cannot be empty.")
@@ -139,10 +198,6 @@ class VectorSearch:
             if re.search(pattern, normalized_query, re.IGNORECASE):
                 normalized_query = re.sub(pattern, repl, normalized_query, flags=re.IGNORECASE)
 
-        model = self.get_model()
-        question_vector = model.encode([normalized_query], convert_to_numpy=True)[0].tolist()
-        q_dim = len(question_vector)
-
         # 2. Identify key target section keywords in query for section boosting
         query_lower = normalized_query.lower()
         target_sections = []
@@ -154,6 +209,22 @@ class VectorSearch:
             target_sections.append('education')
         if 'certification' in query_lower:
             target_sections.append('certifications')
+
+        model = None
+        try:
+            model = self.get_model()
+        except Exception as e:
+            print(f"Warning: SentenceTransformer unavailable ({e}). Falling back to pure-Python TF-IDF search.")
+
+        if model is None:
+            return self._tfidf_search(normalized_query, top_k=top_k, target_sections=target_sections)
+
+        try:
+            question_vector = model.encode([normalized_query], convert_to_numpy=True)[0].tolist()
+            q_dim = len(question_vector)
+        except Exception as e:
+            print(f"Warning: Encoding failed ({e}). Falling back to pure-Python TF-IDF search.")
+            return self._tfidf_search(normalized_query, top_k=top_k, target_sections=target_sections)
 
         scored_chunks = []
         for chunk in self.chunks:

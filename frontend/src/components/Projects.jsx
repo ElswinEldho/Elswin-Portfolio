@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ExternalLink, Github, Sparkles, ShieldCheck } from 'lucide-react';
+import { Github, Sparkles, ShieldCheck } from 'lucide-react';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 
 export default function Projects() {
@@ -203,7 +203,7 @@ export default function Projects() {
                 </div>
 
                 {/* Action Links */}
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-start">
                   <a
                     href={project.github}
                     target="_blank"
@@ -212,16 +212,6 @@ export default function Projects() {
                   >
                     <Github className="w-4 h-4 text-indigo-400 group-hover/link:scale-110 transition-transform" />
                     GitHub Source
-                  </a>
-
-                  <a
-                    href={project.demo}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-xs font-mono border border-indigo-500/30 btn-premium group/btn"
-                  >
-                    View Project
-                    <ExternalLink className="w-3.5 h-3.5 icon-shift" />
                   </a>
                 </div>
               </div>

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Sparkles, Send, Maximize2 } from 'lucide-react';
+import { smoothScrollTo } from '../hooks/useSmoothScroll';
 
 function scrollToSection(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  smoothScrollTo(`#${id}`, -80);
 }
 
 export default function Navbar({ onResumeClick }) {
@@ -70,7 +69,7 @@ export default function Navbar({ onResumeClick }) {
 
             {/* Signature — primary personal identity mark */}
             <button
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              onClick={() => smoothScrollTo(0, 0)}
               className="focus:outline-none group"
             >
               <img
