@@ -236,7 +236,11 @@ export default function AIAssistant() {
           </div>
 
           {/* Chat Messages Viewport */}
-          <div ref={chatContainerRef} className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#070b14]/90">
+          <div
+            ref={chatContainerRef}
+            data-lenis-prevent="true"
+            className="flex-1 p-5 overflow-y-auto overscroll-contain space-y-4 bg-[#070b14]/90 custom-scrollbar"
+          >
             
             {/* Empty State */}
             {messages.length === 0 && !isStreaming && (
