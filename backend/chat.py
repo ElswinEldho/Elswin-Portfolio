@@ -331,10 +331,39 @@ def _build_prompts(query, results):
     return system_prompt, user_prompt
 
 
+def _fallback_smart_answer(query, results):
+    """
+    Synthesizes a clean, well-formatted answer directly from retrieved chunks
+    when Ollama/cloud LLM is offline or unreachable on cloud hosts.
+    """
+    if not results:
+        return "This information is not available in Elswin's profile."
+
+    clean_facts = []
+    seen = set()
+    for _, chunk in results:
+        text = chunk.get("text", "").strip()
+        if text and text not in seen:
+            seen.add(text)
+            clean_facts.append(text)
+
+    if not clean_facts:
+        return "This information is not available in Elswin's profile."
+
+    lines = []
+    lines.append("Here are the key details from Elswin's portfolio:")
+    lines.append("")
+
+    for fact in clean_facts:
+        lines.append(f"- {fact}")
+
+    return "\n".join(lines)
+
+
 def generate_answer(query, results, model_name="qwen3:1.7b"):
     """
     Passes the question + top retrieved chunks to Qwen via Ollama (non-streaming).
-    Qwen synthesizes a natural-language answer about Elswin.
+    Falls back to smart RAG direct answer if Ollama is unreachable.
     """
     import urllib.request
     import urllib.error
@@ -366,7 +395,7 @@ def generate_answer(query, results, model_name="qwen3:1.7b"):
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=120) as response:
+        with urllib.request.urlopen(req, timeout=3) as response:
             body = response.read().decode("utf-8")
             data = json.loads(body)
             answer = data.get("message", {}).get("content", "").strip()
@@ -374,25 +403,17 @@ def generate_answer(query, results, model_name="qwen3:1.7b"):
             answer = answer.replace('\r\n', '\n').replace('\r', '\n')
             answer = "\n".join(line.rstrip() for line in answer.splitlines())
             if not answer:
-                return "No answer returned by the model."
+                return _fallback_smart_answer(query, results)
             return format_answer_for_terminal(answer)
-    except urllib.error.URLError as e:
-        print(f"[Error] Could not connect to Ollama at {url}.")
-        print(f"Details: {e}")
-        print("Make sure Ollama is running: open a new terminal and run 'ollama serve'.")
-        return None
     except Exception as e:
-        print(f"[Error] An unexpected error occurred: {e}")
-        return None
+        print(f"[Notice] Ollama unreachable on cloud server ({e}). Using direct RAG answer.")
+        return _fallback_smart_answer(query, results)
 
 
 def stream_answer(query, results, model_name="qwen3:1.7b"):
     """
-    Generator yielding Qwen response tokens in real-time as SSE data events.
-    Format:
-      data: {"token": "..."}
-      ...
-      data: {"done": true}
+    Generator yielding response tokens in real-time as SSE data events.
+    Falls back to word-by-word streaming of direct RAG facts if Ollama is offline.
     """
     import urllib.request
     import urllib.error
@@ -426,7 +447,7 @@ def stream_answer(query, results, model_name="qwen3:1.7b"):
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=120) as response:
+        with urllib.request.urlopen(req, timeout=3) as response:
             in_think_block = False
             for line in response:
                 if not line:
@@ -446,7 +467,7 @@ def stream_answer(query, results, model_name="qwen3:1.7b"):
                     content = re.sub(r"<think>.*", "", content)
                 if "</think>" in content:
                     in_think_block = False
-                    content = re.sub(r".*?</think>", "", content)
+                    content = re.sub(r".*?", "", content)
 
                 if in_think_block:
                     continue
@@ -459,7 +480,13 @@ def stream_answer(query, results, model_name="qwen3:1.7b"):
 
         yield f"data: {json.dumps({'done': True})}\n\n"
     except Exception as e:
-        yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
+        print(f"[Notice] Ollama unreachable on cloud server ({e}). Streaming direct RAG answer.")
+        fallback_text = _fallback_smart_answer(query, results)
+        words = fallback_text.split(" ")
+        for i, word in enumerate(words):
+            chunk = word if i == 0 else " " + word
+            yield f"data: {json.dumps({'token': chunk})}\n\n"
+        yield f"data: {json.dumps({'done': True})}\n\n"
 
 
 def format_answer_for_terminal(answer, max_width=85):
