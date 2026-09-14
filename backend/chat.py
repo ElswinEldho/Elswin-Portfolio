@@ -368,14 +368,15 @@ def _fallback_smart_answer(query, results):
 def _try_groq_stream(system_prompt, user_prompt):
     """
     Calls Groq API (llama-3.3-70b-versatile) if GROQ_API_KEY is set.
-    Returns a streaming generator yielding text tokens, or None on failure.
-    Groq is the PRIMARY cloud LLM — fast, free, and high quality.
+    Uses non-streaming mode for reliability (streaming had silent read failures).
+    Returns a single-item generator yielding the full response text, or None on failure.
     """
     import urllib.request
     import urllib.error
 
     groq_key = os.environ.get("GROQ_API_KEY", "").strip()
     if not groq_key:
+        print("[Groq] GROQ_API_KEY not set — skipping.")
         return None
 
     payload = {
@@ -384,7 +385,7 @@ def _try_groq_stream(system_prompt, user_prompt):
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_prompt}
         ],
-        "stream": True,
+        "stream": False,
         "temperature": 0.2,
         "max_tokens": 800
     }
@@ -399,29 +400,23 @@ def _try_groq_stream(system_prompt, user_prompt):
     )
 
     try:
-        response = urllib.request.urlopen(req, timeout=30)
-        def token_generator():
-            try:
-                for line in response:
-                    if not line:
-                        continue
-                    line_str = line.decode("utf-8").strip()
-                    if line_str.startswith("data: "):
-                        data_content = line_str[6:].strip()
-                        if data_content == "[DONE]":
-                            break
-                        try:
-                            data = json.loads(data_content)
-                            delta = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
-                            if delta:
-                                yield delta
-                        except Exception:
-                            continue
-            finally:
-                response.close()
-        return token_generator()
+        with urllib.request.urlopen(req, timeout=30) as response:
+            body = response.read().decode("utf-8")
+            data = json.loads(body)
+            content = data["choices"][0]["message"]["content"].strip()
+            if content:
+                print(f"[Groq] Success — got {len(content)} chars from llama-3.3-70b-versatile.")
+                def _single(c):
+                    yield c
+                return _single(content)
+            print("[Groq] Empty response from API.")
+            return None
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", "replace")
+        print(f"[Groq] HTTP {e.code} error: {err_body[:200]}")
+        return None
     except Exception as e:
-        print(f"[Warning] Groq API call failed ({e}).")
+        print(f"[Groq] API call failed: {type(e).__name__}: {e}")
         return None
 
 
