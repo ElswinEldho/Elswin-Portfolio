@@ -257,6 +257,7 @@ def _build_prompts(query, results):
     )
 
 
+
     query_lower = query.lower()
 
     # Detect out-of-scope / personal / casual questions
@@ -509,7 +510,7 @@ def generate_answer(query, results, model_name="qwen3:1.7b"):
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=3) as response:
+        with urllib.request.urlopen(req, timeout=120) as response:
             body = response.read().decode("utf-8")
             data = json.loads(body)
             answer = data.get("message", {}).get("content", "").strip()
@@ -576,7 +577,7 @@ def stream_answer(query, results, model_name="qwen3:1.7b"):
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=3) as response:
+        with urllib.request.urlopen(req, timeout=120) as response:
             in_think_block = False
             for line in response:
                 if not line:
