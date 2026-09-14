@@ -51,6 +51,37 @@ async def debug_env():
     }
 
 
+@app.get("/debug/groq-test")
+async def groq_test():
+    """Direct Groq API test — confirms the key works end-to-end from Render."""
+    import os, urllib.request, json, urllib.error
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not groq_key:
+        return {"status": "error", "detail": "GROQ_API_KEY not set"}
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [{"role": "user", "content": "Say: Groq is working!"}],
+        "stream": False,
+        "temperature": 0.1,
+        "max_tokens": 20
+    }
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/chat/completions",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {groq_key}"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read().decode())
+            content = data["choices"][0]["message"]["content"]
+            return {"status": "success", "groq_response": content}
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", "replace")
+        return {"status": "http_error", "code": e.code, "detail": body}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+
 class ChatRequest(BaseModel):
     question: str
     stream: bool = False
