@@ -27,7 +27,28 @@ searcher.load_embeddings()
 @app.get("/")
 @app.get("/healthz")
 async def health_check():
-    return {"status": "ok", "message": "Portfolio API is running"}
+    import os
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    return {
+        "status": "ok",
+        "message": "Portfolio API is running",
+        "groq_configured": bool(groq_key),
+        "groq_key_preview": f"{groq_key[:8]}..." if groq_key else "NOT SET"
+    }
+
+
+@app.get("/debug/env")
+async def debug_env():
+    import os
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    openai_key = os.environ.get("OPENAI_API_KEY", "")
+    return {
+        "GROQ_API_KEY": f"{groq_key[:12]}..." if groq_key else "NOT SET",
+        "GEMINI_API_KEY": f"{gemini_key[:8]}..." if gemini_key else "NOT SET",
+        "OPENAI_API_KEY": f"{openai_key[:8]}..." if openai_key else "NOT SET",
+        "llm_backend": "groq" if groq_key else ("gemini" if gemini_key else ("openai" if openai_key else "rag-fallback"))
+    }
 
 
 class ChatRequest(BaseModel):
