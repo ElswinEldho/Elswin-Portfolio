@@ -333,95 +333,34 @@ def _build_prompts(query, results):
 
 def _fallback_smart_answer(query, results):
     """
-    Intelligently parses retrieved chunks and synthesizes natural, clean,
-    and polished responses tailored to the user's specific question intent
-    when running on cloud hosts without Ollama.
+    Dynamically constructs a response strictly from the retrieved vector chunks
+    (from embeddings.json / about-me.txt) without any hardcoded text.
     """
     if not results:
         return "This information is not available in Elswin's profile."
 
-    query_lower = query.lower()
-    raw_texts = [chunk["text"].strip() for _, chunk in results if chunk.get("text")]
-
-    # 1. Salary / Evaluation / Compensation Intent
-    if any(k in query_lower for k in ['salary', 'compensation', 'package', 'lpa', 'pay', 'remuneration', 'worth', 'offer']):
-        return (
-            "Based on Elswin's technical credentials, 1 year of hands-on experience as a Junior Developer, "
-            "and current market standards in Kochi (for a mid-sized IT company of ~200 employees):\n\n"
-            "- **Recommended Salary Range**: **₹5.0 LPA – ₹7.5 LPA**\n"
-            "- **Role Suitability**: Junior Full-Stack Developer / Software Engineer / AI Solution Developer\n"
-            "- **Key Justification**:\n"
-            "  • Production expertise in React, Next.js, TypeScript, Node.js, Python, and PostgreSQL/MongoDB\n"
-            "  • Hands-on experience building enterprise ESG platforms, carbon accounting modules, and REST APIs\n"
-            "  • Proven record developing ML systems (98% accuracy Random Forest speech disorder model & Explainable AI with SHAP/LIME)"
-        )
-
-    # 2. Technology / Skills Intent
-    if any(k in query_lower for k in ['technology', 'technologies', 'tech stack', 'skill', 'skills', 'tools', 'languages']):
-        return (
-            "Elswin utilizes a modern full-stack and AI/ML tech stack across his projects and professional roles:\n\n"
-            "- **Programming Languages**: Python, JavaScript, TypeScript\n"
-            "- **Frontend Development**: React, Next.js, Vite, Tailwind CSS, Recharts\n"
-            "- **Backend & APIs**: Node.js, Express, Django, FastAPI, REST APIs\n"
-            "- **Databases & Cloud**: PostgreSQL, MongoDB, Mongoose, Firebase\n"
-            "- **AI, ML & Data Analytics**: Machine Learning (Random Forest, Scikit-learn), Librosa (Audio Processing), Explainable AI (SHAP, LIME), Power BI, ESG Analytics\n"
-            "- **Tools & Workflow**: VS Code, Git, GitHub, Docker, BitBucket, Jira, MS Excel"
-        )
-
-    # 3. Machine Learning / AI Projects Intent
-    if any(k in query_lower for k in ['ml', 'machine learning', 'ai project', 'ai-driven', 'models']):
-        return (
-            "Elswin has engineered several innovative AI & Machine Learning solutions:\n\n"
-            "- **AI-Powered Speech Analysis Tool for Speech Therapists**:\n"
-            "  A Django web application that assists in diagnosing speech disorders (e.g., dysarthria) with **98% classification accuracy** using Librosa for MFCC feature extraction and Scikit-learn (Random Forest). Presented at ICIMRBE 2025.\n\n"
-            "- **AI-Driven Smart Agriculture & Soil Intelligence Platform**:\n"
-            "  An IoT-enabled (ESP32) smart farming system built with FastAPI and ML models to provide real-time crop & fertilizer recommendations with Explainable AI (SHAP & LIME) to justify model predictions."
-        )
-
-    # 4. General Projects Intent
-    if 'project' in query_lower:
-        return (
-            "Here are Elswin's key software and AI projects:\n\n"
-            "- **AI-Powered Speech Analysis Tool**: Django & Random Forest model (98% accuracy) for speech disorder diagnosis using Librosa MFCC feature extraction.\n"
-            "- **Vendor-IQ ESG Screening Platform**: Vendor ESG assessment system with automated risk scoring, scorecard generation, and historical performance tracking.\n"
-            "- **AI-Driven Smart Agriculture System**: ESP32 IoT sensors + FastAPI + ML crop recommendations with SHAP & LIME Explainable AI.\n"
-            "- **EnSoGo Sustainability Readiness Chatbot**: Node.js & React platform scoring organizational Scope 1/2/3 emissions using SAM BRD v2.0 framework."
-        )
-
-    # 5. Experience / Work Intent
-    if any(k in query_lower for k in ['experience', 'work', 'job', 'role', 'internship', 'sam corporate']):
-        return (
-            "Elswin's professional experience encompasses full-stack software development and ESG solutions:\n\n"
-            "- **Junior Developer** (Kakkanad, Kochi):\n"
-            "  Transforms business requirements and BRDs into complete web applications using React, Next.js, TypeScript, Node.js, and PostgreSQL. Develops REST APIs, database models, and reporting workflows.\n\n"
-            "- **Developer Intern (Full Stack)**: Designed and maintained ESG & sustainability platforms, carbon accounting modules, and client-facing web applications.\n\n"
-            "- **ESG Presales Consultant (SAM Corporate)**: Developed Power BI dashboards, structured complex datasets, and conducted CDP analytics."
-        )
-
-    # 6. Education / Qualifications Intent
-    if any(k in query_lower for k in ['education', 'degree', 'study', 'college', 'b.tech', 'university', 'gpa', 'cgpa']):
-        return (
-            "Elswin's educational background:\n\n"
-            "- **B.Tech in Computer Science and Engineering**:\n"
-            "  Adi Shankara Institute of Engineering and Technology, Kalady (2022 – 2026) | **CGPA: 8.58**\n\n"
-            "- **Higher Secondary Education**:\n"
-            "  Brahmanandodayam Kalady (2020 – 2022) | **96.41%**"
-        )
-
-    # 7. Default Cleaned Synthesis Fallback
-    cleaned_items = []
+    facts = []
     seen = set()
-    for text in raw_texts:
-        cleaned = re.sub(r'^(Projects:|Skills:|Education & Studies:|Education:|Professional Summary:|Contact Information:|Professional Experience:|Certifications:|\d+\.)\s*', '', text, flags=re.IGNORECASE).strip()
-        if cleaned and cleaned not in seen:
-            seen.add(cleaned)
-            cleaned_items.append(cleaned)
+    for score, chunk in results:
+        text = chunk.get("text", "").strip()
+        if text and text not in seen:
+            seen.add(text)
+            facts.append(text)
 
-    if not cleaned_items:
+    if not facts:
         return "This information is not available in Elswin's profile."
 
-    formatted_bullets = "\n".join(f"- {item}" for item in cleaned_items[:4])
-    return f"Here are the relevant details from Elswin's portfolio:\n\n{formatted_bullets}"
+    formatted_facts = []
+    for fact in facts:
+        # Clean up raw section prefixes while keeping original portfolio content 100% intact
+        clean_text = re.sub(r'^(Projects:|Skills:|Education & Studies:|Education:|Professional Summary:|Contact Information:|Professional Experience:|Certifications:|\d+\.)\s*', '', fact, flags=re.IGNORECASE).strip()
+        if clean_text:
+            formatted_facts.append(f"- {clean_text}")
+
+    if not formatted_facts:
+        return "This information is not available in Elswin's profile."
+
+    return "\n\n".join(formatted_facts)
 
 
 def _try_cloud_llm_stream(system_prompt, user_prompt):
