@@ -24,6 +24,12 @@ searcher = VectorSearch()
 searcher.load_embeddings()
 
 
+@app.get("/")
+@app.get("/healthz")
+async def health_check():
+    return {"status": "ok", "message": "Portfolio API is running"}
+
+
 class ChatRequest(BaseModel):
     question: str
     stream: bool = False
