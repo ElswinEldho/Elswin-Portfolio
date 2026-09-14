@@ -80,7 +80,7 @@ async def llm_test():
     # Test Gemini
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if gemini_key:
-        models_to_try = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-3.5-flash"]
+        models_to_try = ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-flash-lite-latest"]
         gemini_result = {"status": "error", "detail": "all models failed"}
         for model in models_to_try:
             api_url = (

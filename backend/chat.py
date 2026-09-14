@@ -379,12 +379,12 @@ def _try_gemini(system_prompt, user_prompt):
     if not gemini_key:
         return None
 
-    # Confirmed available models (from /v1beta/models listing)
+    # Confirmed working models for newly created API keys
     models_to_try = [
-        "gemini-2.5-flash",
-        "gemini-flash-latest",
-        "gemini-2.5-flash-lite",
         "gemini-3.5-flash",
+        "gemini-flash-latest",
+        "gemini-3.1-flash-lite",
+        "gemini-flash-lite-latest",
     ]
 
     payload = {
