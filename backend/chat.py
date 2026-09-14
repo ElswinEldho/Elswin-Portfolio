@@ -366,18 +366,51 @@ def _fallback_smart_answer(query, results):
 
 def _try_cloud_llm_stream(system_prompt, user_prompt):
     """
-    Attempts to call Groq API or OpenAI API if GROQ_API_KEY or OPENAI_API_KEY is configured.
+    Attempts to call Groq API, Gemini API, or OpenAI API if environment keys are configured.
     Returns a generator yielding text tokens, or None if no cloud key is set/call fails.
     """
     import urllib.request
     import urllib.error
 
     groq_key = os.environ.get("GROQ_API_KEY")
+    gemini_key = os.environ.get("GEMINI_API_KEY")
     openai_key = os.environ.get("OPENAI_API_KEY")
 
-    if not (groq_key or openai_key):
+    if not (groq_key or gemini_key or openai_key):
         return None
 
+    # 1. Handle Gemini API if set
+    if gemini_key and not groq_key and not openai_key:
+        api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+        payload = {
+            "contents": [
+                {"role": "user", "parts": [{"text": f"{system_prompt}\n\n{user_prompt}"}]}
+            ]
+        }
+        req = urllib.request.Request(
+            api_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as response:
+                body = response.read().decode("utf-8")
+                data = json.loads(body)
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts:
+                        text = parts[0].get("text", "")
+                        words = text.split(" ")
+                        def gemini_tokens():
+                            for i, w in enumerate(words):
+                                yield w if i == 0 else " " + w
+                        return gemini_tokens()
+        except Exception as e:
+            print(f"[Warning] Gemini API call failed ({e}).")
+            return None
+
+    # 2. Handle Groq / OpenAI API
     if groq_key:
         api_url = "https://api.groq.com/openai/v1/chat/completions"
         api_key = groq_key
