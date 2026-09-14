@@ -51,6 +51,26 @@ async def debug_env():
     }
 
 
+@app.get("/debug/gemini-models")
+async def gemini_models():
+    """Lists all Gemini models available for your API key."""
+    import os, urllib.request, json, urllib.error
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not gemini_key:
+        return {"error": "GEMINI_API_KEY not set"}
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}"
+    try:
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+            models = [m["name"] for m in data.get("models", [])]
+            flash_models = [m for m in models if "flash" in m.lower()]
+            return {"all_flash_models": flash_models, "total_models": len(models)}
+    except urllib.error.HTTPError as e:
+        return {"error": e.code, "detail": e.read().decode()[:300]}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/debug/llm-test")
 async def llm_test():
     """Tests Gemini (primary) then Groq (secondary) to confirm which LLM works from Render."""
