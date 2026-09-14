@@ -365,18 +365,69 @@ def _fallback_smart_answer(query, results):
     return "\n\n".join(formatted_facts)
 
 
-def _try_groq_stream(system_prompt, user_prompt):
+def _try_gemini(system_prompt, user_prompt):
+    """
+    Calls Gemini 1.5 Flash API if GEMINI_API_KEY is set.
+    Primary LLM — free, works from all cloud servers (no Cloudflare restrictions).
+    Returns a single-item generator with the full response, or None on failure.
+    """
+    import urllib.request
+    import urllib.error
+
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not gemini_key:
+        return None
+
+    api_url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"gemini-1.5-flash:generateContent?key={gemini_key}"
+    )
+    payload = {
+        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 800}
+    }
+    req = urllib.request.Request(
+        api_url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            body = response.read().decode("utf-8")
+            data = json.loads(body)
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts:
+                    text = parts[0].get("text", "").strip()
+                    if text:
+                        print(f"[Gemini] Success — got {len(text)} chars.")
+                        def _single(t):
+                            yield t
+                        return _single(text)
+            print("[Gemini] Empty response from API.")
+            return None
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", "replace")
+        print(f"[Gemini] HTTP {e.code} error: {err_body[:200]}")
+        return None
+    except Exception as e:
+        print(f"[Gemini] API call failed: {type(e).__name__}: {e}")
+        return None
+
+
+def _try_groq(system_prompt, user_prompt):
     """
     Calls Groq API (llama-3.3-70b-versatile) if GROQ_API_KEY is set.
-    Uses non-streaming mode for reliability (streaming had silent read failures).
-    Returns a single-item generator yielding the full response text, or None on failure.
+    Secondary LLM — fast but blocked by Cloudflare on some hosting providers.
+    Returns a single-item generator with the full response, or None on failure.
     """
     import urllib.request
     import urllib.error
 
     groq_key = os.environ.get("GROQ_API_KEY", "").strip()
     if not groq_key:
-        print("[Groq] GROQ_API_KEY not set — skipping.")
         return None
 
     payload = {
@@ -389,7 +440,6 @@ def _try_groq_stream(system_prompt, user_prompt):
         "temperature": 0.2,
         "max_tokens": 800
     }
-
     req = urllib.request.Request(
         "https://api.groq.com/openai/v1/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
@@ -398,22 +448,20 @@ def _try_groq_stream(system_prompt, user_prompt):
             "Authorization": f"Bearer {groq_key}"
         }
     )
-
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
             body = response.read().decode("utf-8")
             data = json.loads(body)
             content = data["choices"][0]["message"]["content"].strip()
             if content:
-                print(f"[Groq] Success — got {len(content)} chars from llama-3.3-70b-versatile.")
+                print(f"[Groq] Success — got {len(content)} chars.")
                 def _single(c):
                     yield c
                 return _single(content)
-            print("[Groq] Empty response from API.")
             return None
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", "replace")
-        print(f"[Groq] HTTP {e.code} error: {err_body[:200]}")
+        print(f"[Groq] HTTP {e.code} error (often Cloudflare block): {err_body[:100]}")
         return None
     except Exception as e:
         print(f"[Groq] API call failed: {type(e).__name__}: {e}")
@@ -422,54 +470,25 @@ def _try_groq_stream(system_prompt, user_prompt):
 
 def _try_cloud_llm_stream(system_prompt, user_prompt):
     """
-    Priority: Groq → Gemini → OpenAI
-    Returns a generator yielding text tokens, or None if no key is set or all calls fail.
+    Priority: Gemini → Groq → OpenAI
+    Gemini is primary — free, reliable from all cloud hosts (no Cloudflare restrictions).
+    Returns a generator yielding text, or None if all fail / no keys set.
     """
     import urllib.request
     import urllib.error
 
-    # 1. Groq (primary — fastest and free)
-    groq_stream = _try_groq_stream(system_prompt, user_prompt)
+    # 1. Gemini (primary — free & cloud-friendly)
+    gemini_stream = _try_gemini(system_prompt, user_prompt)
+    if gemini_stream is not None:
+        return gemini_stream
+
+    # 2. Groq (secondary — may be blocked by Cloudflare on some cloud hosts)
+    groq_stream = _try_groq(system_prompt, user_prompt)
     if groq_stream is not None:
         return groq_stream
 
-    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    # 3. OpenAI (tertiary)
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
-
-    if not (gemini_key or openai_key):
-        return None
-
-    # 2. Gemini fallback
-    if gemini_key:
-        api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-        payload = {
-            "contents": [
-                {"role": "user", "parts": [{"text": f"{system_prompt}\n\n{user_prompt}"}]}
-            ]
-        }
-        req = urllib.request.Request(
-            api_url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=20) as response:
-                body = response.read().decode("utf-8")
-                data = json.loads(body)
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    if parts:
-                        text = parts[0].get("text", "")
-                        words = text.split(" ")
-                        def gemini_tokens():
-                            for i, w in enumerate(words):
-                                yield w if i == 0 else " " + w
-                        return gemini_tokens()
-        except Exception as e:
-            print(f"[Warning] Gemini API call failed ({e}).")
-
-    # 3. OpenAI fallback
     if openai_key:
         payload = {
             "model": "gpt-3.5-turbo",
@@ -477,7 +496,7 @@ def _try_cloud_llm_stream(system_prompt, user_prompt):
                 {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": user_prompt}
             ],
-            "stream": True,
+            "stream": False,
             "temperature": 0.2
         }
         req = urllib.request.Request(
@@ -489,29 +508,16 @@ def _try_cloud_llm_stream(system_prompt, user_prompt):
             }
         )
         try:
-            response = urllib.request.urlopen(req, timeout=20)
-            def openai_token_generator():
-                try:
-                    for line in response:
-                        if not line:
-                            continue
-                        line_str = line.decode("utf-8").strip()
-                        if line_str.startswith("data: "):
-                            data_content = line_str[6:].strip()
-                            if data_content == "[DONE]":
-                                break
-                            try:
-                                data = json.loads(data_content)
-                                delta = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
-                                if delta:
-                                    yield delta
-                            except Exception:
-                                continue
-                finally:
-                    response.close()
-            return openai_token_generator()
+            with urllib.request.urlopen(req, timeout=20) as response:
+                body = response.read().decode("utf-8")
+                data = json.loads(body)
+                content = data["choices"][0]["message"]["content"].strip()
+                if content:
+                    def _single(c):
+                        yield c
+                    return _single(content)
         except Exception as e:
-            print(f"[Warning] OpenAI API call failed ({e}).")
+            print(f"[OpenAI] API call failed: {e}")
 
     return None
 

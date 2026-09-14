@@ -51,35 +51,62 @@ async def debug_env():
     }
 
 
-@app.get("/debug/groq-test")
-async def groq_test():
-    """Direct Groq API test — confirms the key works end-to-end from Render."""
+@app.get("/debug/llm-test")
+async def llm_test():
+    """Tests Gemini (primary) then Groq (secondary) to confirm which LLM works from Render."""
     import os, urllib.request, json, urllib.error
+    results = {}
+
+    # Test Gemini
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if gemini_key:
+        api_url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"gemini-1.5-flash:generateContent?key={gemini_key}"
+        )
+        payload = {
+            "contents": [{"role": "user", "parts": [{"text": "Say: Gemini is working!"}]}],
+            "generationConfig": {"maxOutputTokens": 20}
+        }
+        req = urllib.request.Request(api_url, json.dumps(payload).encode(),
+                                     {"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                data = json.loads(resp.read().decode())
+                text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                results["gemini"] = {"status": "success", "response": text}
+        except urllib.error.HTTPError as e:
+            results["gemini"] = {"status": "error", "code": e.code, "detail": e.read().decode()[:100]}
+        except Exception as e:
+            results["gemini"] = {"status": "error", "detail": str(e)}
+    else:
+        results["gemini"] = {"status": "not_configured"}
+
+    # Test Groq
     groq_key = os.environ.get("GROQ_API_KEY", "").strip()
-    if not groq_key:
-        return {"status": "error", "detail": "GROQ_API_KEY not set"}
-    payload = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": [{"role": "user", "content": "Say: Groq is working!"}],
-        "stream": False,
-        "temperature": 0.1,
-        "max_tokens": 20
-    }
-    req = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
-        data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {groq_key}"}
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            data = json.loads(resp.read().decode())
-            content = data["choices"][0]["message"]["content"]
-            return {"status": "success", "groq_response": content}
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", "replace")
-        return {"status": "http_error", "code": e.code, "detail": body}
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
+    if groq_key:
+        payload = {"model": "llama-3.3-70b-versatile",
+                   "messages": [{"role": "user", "content": "Say: Groq is working!"}],
+                   "stream": False, "max_tokens": 20}
+        req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions",
+                                     json.dumps(payload).encode(),
+                                     {"Content-Type": "application/json",
+                                      "Authorization": f"Bearer {groq_key}"})
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+                text = data["choices"][0]["message"]["content"].strip()
+                results["groq"] = {"status": "success", "response": text}
+        except urllib.error.HTTPError as e:
+            results["groq"] = {"status": "error", "code": e.code, "detail": e.read().decode()[:100]}
+        except Exception as e:
+            results["groq"] = {"status": "error", "detail": str(e)}
+    else:
+        results["groq"] = {"status": "not_configured"}
+
+    active = "gemini" if results.get("gemini", {}).get("status") == "success" else \
+             "groq" if results.get("groq", {}).get("status") == "success" else "none"
+    return {"active_llm": active, "details": results}
 
 
 class ChatRequest(BaseModel):
