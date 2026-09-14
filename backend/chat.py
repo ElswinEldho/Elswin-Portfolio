@@ -380,7 +380,7 @@ def _try_gemini(system_prompt, user_prompt):
 
     api_url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-1.5-flash:generateContent?key={gemini_key}"
+        f"gemini-2.0-flash:generateContent?key={gemini_key}"
     )
     payload = {
         "system_instruction": {"parts": [{"text": system_prompt}]},
