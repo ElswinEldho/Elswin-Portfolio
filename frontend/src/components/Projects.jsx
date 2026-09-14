@@ -21,7 +21,7 @@ export default function Projects() {
         'MongoDB document storage for dynamic questionnaire schemas'
       ],
       github: 'https://github.com/ElswinEldho',
-      demo: 'https://elswineldho.github.io/Portfolio/',
+      demo: 'https://elswin-portfolio.vercel.app/',
       featured: true
     },
     {
@@ -38,7 +38,7 @@ export default function Projects() {
         'Interactive chatbot interface for farmer advisory'
       ],
       github: 'https://github.com/ElswinEldho',
-      demo: 'https://elswineldho.github.io/Portfolio/',
+      demo: 'https://elswin-portfolio.vercel.app/',
       featured: true
     },
     {
@@ -55,7 +55,7 @@ export default function Projects() {
         'Historical performance tracking and remediation roadmaps'
       ],
       github: 'https://github.com/ElswinEldho',
-      demo: 'https://elswineldho.github.io/Portfolio/',
+      demo: 'https://elswin-portfolio.vercel.app/',
       featured: false
     },
     {
@@ -72,7 +72,7 @@ export default function Projects() {
         'Presented at ICIMRBE conference (April 2025)'
       ],
       github: 'https://github.com/ElswinEldho',
-      demo: 'https://elswineldho.github.io/Portfolio/',
+      demo: 'https://elswin-portfolio.vercel.app/',
       featured: false
     }
   ];

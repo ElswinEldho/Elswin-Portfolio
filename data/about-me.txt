@@ -1,8 +1,8 @@
-Contact Information: Elswin P Eldho, Junior Developer, elswineldho2@gmail.com
+Contact Information: Elswin P Eldho, Junior Developer, elswin08@gmail.com
 +91 8086364948
 github.com/ElswinEldho
 linkedin.com/in/elswinpeldho
-https://elswineldho.github.io/Portfolio/
+https://elswin-portfolio.vercel.app/
 
 Professional Summary
 Computer Science Engineering graduate with experience as an Junior Developer, and ESG Consultant. Skilled in developing ESG and sustainability platforms, carbon accounting solutions, sustainability reporting, and REST APIs while supporting client demonstrations, solution design, and business requirements. Passionate about combining technology and sustainability to deliver innovative digital solutions that drive ESG transformation.

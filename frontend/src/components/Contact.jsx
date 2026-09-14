@@ -7,7 +7,7 @@ export default function Contact() {
   const [copied, setCopied] = React.useState(false);
 
   const copyEmail = () => {
-    navigator.clipboard.writeText('elswineldho2@gmail.com');
+    navigator.clipboard.writeText('elswin08@gmail.com');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -15,8 +15,8 @@ export default function Contact() {
   const contactLinks = [
     {
       title: 'Email',
-      value: 'elswineldho2@gmail.com',
-      href: 'mailto:elswineldho2@gmail.com',
+      value: 'elswin08@gmail.com',
+      href: 'mailto:elswin08@gmail.com',
       icon: Mail,
       color: 'text-indigo-400',
       action: copyEmail,
