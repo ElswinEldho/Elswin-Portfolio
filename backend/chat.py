@@ -424,10 +424,78 @@ def _fallback_smart_answer(query, results):
     return f"Here are the relevant details from Elswin's portfolio:\n\n{formatted_bullets}"
 
 
+def _try_cloud_llm_stream(system_prompt, user_prompt):
+    """
+    Attempts to call Groq API or OpenAI API if GROQ_API_KEY or OPENAI_API_KEY is configured.
+    Returns a generator yielding text tokens, or None if no cloud key is set/call fails.
+    """
+    import urllib.request
+    import urllib.error
+
+    groq_key = os.environ.get("GROQ_API_KEY")
+    openai_key = os.environ.get("OPENAI_API_KEY")
+
+    if not (groq_key or openai_key):
+        return None
+
+    if groq_key:
+        api_url = "https://api.groq.com/openai/v1/chat/completions"
+        api_key = groq_key
+        model = "llama-3.3-70b-versatile"
+    else:
+        api_url = "https://api.openai.com/v1/chat/completions"
+        api_key = openai_key
+        model = "gpt-3.5-turbo"
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_prompt}
+        ],
+        "stream": True,
+        "temperature": 0.2
+    }
+
+    req = urllib.request.Request(
+        api_url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+    )
+
+    try:
+        response = urllib.request.urlopen(req, timeout=15)
+        def token_generator():
+            try:
+                for line in response:
+                    if not line:
+                        continue
+                    line_str = line.decode("utf-8").strip()
+                    if line_str.startswith("data: "):
+                        data_content = line_str[6:].strip()
+                        if data_content == "[DONE]":
+                            break
+                        try:
+                            data = json.loads(data_content)
+                            delta = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                            if delta:
+                                yield delta
+                        except Exception:
+                            continue
+            finally:
+                response.close()
+        return token_generator()
+    except Exception as e:
+        print(f"[Warning] Cloud LLM API call failed ({e}). Falling back to local/RAG.")
+        return None
+
+
 def generate_answer(query, results, model_name="qwen3:1.7b"):
     """
-    Passes the question + top retrieved chunks to Qwen via Ollama (non-streaming).
-    Falls back to smart RAG direct answer if Ollama is unreachable.
+    Passes question + top retrieved chunks to LLM (Cloud LLM -> Ollama -> Smart RAG fallback).
     """
     import urllib.request
     import urllib.error
@@ -437,6 +505,14 @@ def generate_answer(query, results, model_name="qwen3:1.7b"):
 
     system_prompt, user_prompt = _build_prompts(query, results)
 
+    # 1. Try Cloud LLM API (Groq / OpenAI) if key is set
+    cloud_stream = _try_cloud_llm_stream(system_prompt, user_prompt)
+    if cloud_stream:
+        answer = "".join(list(cloud_stream)).strip()
+        if answer:
+            return format_answer_for_terminal(answer)
+
+    # 2. Try Local Ollama
     payload = {
         "model": model_name,
         "messages": [
@@ -470,14 +546,16 @@ def generate_answer(query, results, model_name="qwen3:1.7b"):
                 return _fallback_smart_answer(query, results)
             return format_answer_for_terminal(answer)
     except Exception as e:
-        print(f"[Notice] Ollama unreachable on cloud server ({e}). Using direct RAG answer.")
         return _fallback_smart_answer(query, results)
 
 
 def stream_answer(query, results, model_name="qwen3:1.7b"):
     """
     Generator yielding response tokens in real-time as SSE data events.
-    Falls back to word-by-word streaming of direct RAG facts if Ollama is offline.
+    Priority:
+      1. Cloud LLM API (Groq / OpenAI) if GROQ_API_KEY or OPENAI_API_KEY env var is present
+      2. Local Ollama (http://localhost:11434)
+      3. Smart Intent RAG fallback
     """
     import urllib.request
     import urllib.error
@@ -489,6 +567,19 @@ def stream_answer(query, results, model_name="qwen3:1.7b"):
 
     system_prompt, user_prompt = _build_prompts(query, results)
 
+    # 1. Try Cloud LLM API (Groq / OpenAI) if configured
+    cloud_stream = _try_cloud_llm_stream(system_prompt, user_prompt)
+    if cloud_stream:
+        try:
+            for token in cloud_stream:
+                if token:
+                    yield f"data: {json.dumps({'token': token})}\n\n"
+            yield f"data: {json.dumps({'done': True})}\n\n"
+            return
+        except Exception as e:
+            print(f"[Warning] Error during cloud stream: {e}")
+
+    # 2. Try Local Ollama
     payload = {
         "model": model_name,
         "messages": [
