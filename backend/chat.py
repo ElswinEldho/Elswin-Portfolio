@@ -379,12 +379,12 @@ def _try_gemini(system_prompt, user_prompt):
     if not gemini_key:
         return None
 
-    # Try models in order — newest first, fallback to older stable versions
+    # Confirmed available models (from /v1beta/models listing)
     models_to_try = [
         "gemini-2.5-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-1.5-flash-latest",
-        "gemini-2.5-flash-preview-05-20",
+        "gemini-flash-latest",
+        "gemini-2.5-flash-lite",
+        "gemini-3.5-flash",
     ]
 
     payload = {
