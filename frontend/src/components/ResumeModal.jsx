@@ -57,7 +57,7 @@ export default function ResumeModal({ isOpen, onClose }) {
 
           {/* Centered DOWNLOAD PDF Button (Matching Reference Design) */}
           <a
-            href="/Elswin_P_Eldho_New.pdf"
+            href="/Elswin_P_Eldho_Resume.pdf"
             download="Elswin_P_Eldho_Resume.pdf"
             className="px-6 py-2.5 rounded-sm border border-slate-600 hover:border-slate-300 bg-black hover:bg-slate-900 text-white text-xs font-mono tracking-widest uppercase flex items-center gap-2.5 transition-all shadow-lg group"
           >
@@ -81,7 +81,7 @@ export default function ResumeModal({ isOpen, onClose }) {
           {/* Resume Paper Preview Container */}
           <div className="w-full bg-white rounded-xl overflow-hidden h-[82vh] sm:h-[85vh] border border-slate-700/40 relative">
             <iframe
-              src="/Elswin_P_Eldho_New.pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH&pagemode=none"
+              src="/Elswin_P_Eldho_Resume.pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH&pagemode=none"
               className="w-full h-full border-0 select-none overflow-x-hidden"
               title="Elswin P Eldho Resume"
               style={{ overflowX: 'hidden' }}
