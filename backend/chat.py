@@ -367,7 +367,8 @@ def _fallback_smart_answer(query, results):
 
 def _try_gemini(system_prompt, user_prompt):
     """
-    Calls Gemini 1.5 Flash API if GEMINI_API_KEY is set.
+    Calls Gemini API if GEMINI_API_KEY is set.
+    Tries multiple models in order until one works.
     Primary LLM — free, works from all cloud servers (no Cloudflare restrictions).
     Returns a single-item generator with the full response, or None on failure.
     """
@@ -378,43 +379,54 @@ def _try_gemini(system_prompt, user_prompt):
     if not gemini_key:
         return None
 
-    api_url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-2.0-flash:generateContent?key={gemini_key}"
-    )
+    # Try models in order — newest first, fallback to older stable versions
+    models_to_try = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash-lite",
+        "gemini-1.5-flash-latest",
+        "gemini-2.5-flash-preview-05-20",
+    ]
+
     payload = {
         "system_instruction": {"parts": [{"text": system_prompt}]},
         "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
         "generationConfig": {"temperature": 0.2, "maxOutputTokens": 800}
     }
-    req = urllib.request.Request(
-        api_url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"}
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=30) as response:
-            body = response.read().decode("utf-8")
-            data = json.loads(body)
-            candidates = data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                if parts:
-                    text = parts[0].get("text", "").strip()
-                    if text:
-                        print(f"[Gemini] Success — got {len(text)} chars.")
-                        def _single(t):
-                            yield t
-                        return _single(text)
-            print("[Gemini] Empty response from API.")
-            return None
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode("utf-8", "replace")
-        print(f"[Gemini] HTTP {e.code} error: {err_body[:200]}")
-        return None
-    except Exception as e:
-        print(f"[Gemini] API call failed: {type(e).__name__}: {e}")
-        return None
+
+    for model in models_to_try:
+        api_url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model}:generateContent?key={gemini_key}"
+        )
+        req = urllib.request.Request(
+            api_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                body = response.read().decode("utf-8")
+                data = json.loads(body)
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts:
+                        text = parts[0].get("text", "").strip()
+                        if text:
+                            print(f"[Gemini] Success with {model} — got {len(text)} chars.")
+                            def _single(t):
+                                yield t
+                            return _single(text)
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", "replace")
+            print(f"[Gemini] {model} HTTP {e.code}: {err_body[:80]}")
+            continue
+        except Exception as e:
+            print(f"[Gemini] {model} failed: {type(e).__name__}: {e}")
+            continue
+
+    print("[Gemini] All models failed.")
+    return None
 
 
 def _try_groq(system_prompt, user_prompt):

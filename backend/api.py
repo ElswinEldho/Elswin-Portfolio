@@ -60,25 +60,30 @@ async def llm_test():
     # Test Gemini
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if gemini_key:
-        api_url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"gemini-2.0-flash:generateContent?key={gemini_key}"
-        )
-        payload = {
-            "contents": [{"role": "user", "parts": [{"text": "Say: Gemini is working!"}]}],
-            "generationConfig": {"maxOutputTokens": 20}
-        }
-        req = urllib.request.Request(api_url, json.dumps(payload).encode(),
-                                     {"Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                data = json.loads(resp.read().decode())
-                text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                results["gemini"] = {"status": "success", "response": text}
-        except urllib.error.HTTPError as e:
-            results["gemini"] = {"status": "error", "code": e.code, "detail": e.read().decode()[:100]}
-        except Exception as e:
-            results["gemini"] = {"status": "error", "detail": str(e)}
+        models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-latest"]
+        gemini_result = {"status": "error", "detail": "all models failed"}
+        for model in models_to_try:
+            api_url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{model}:generateContent?key={gemini_key}"
+            )
+            payload = {
+                "contents": [{"role": "user", "parts": [{"text": "Say: Gemini is working!"}]}],
+                "generationConfig": {"maxOutputTokens": 20}
+            }
+            req = urllib.request.Request(api_url, json.dumps(payload).encode(),
+                                         {"Content-Type": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=20) as resp:
+                    data = json.loads(resp.read().decode())
+                    text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    gemini_result = {"status": "success", "model": model, "response": text}
+                    break
+            except urllib.error.HTTPError as e:
+                gemini_result = {"status": "error", "model_tried": model, "code": e.code, "detail": e.read().decode()[:80]}
+            except Exception as e:
+                gemini_result = {"status": "error", "model_tried": model, "detail": str(e)}
+        results["gemini"] = gemini_result
     else:
         results["gemini"] = {"status": "not_configured"}
 
