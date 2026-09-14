@@ -20,7 +20,7 @@ export default function Projects() {
         'JWT-authenticated backend API with Node.js & Express',
         'MongoDB document storage for dynamic questionnaire schemas'
       ],
-      github: 'https://github.com/ElswinEldho',
+      github: 'https://github.com/ElswinEldho/EnSoGo-fresh',
       demo: 'https://elswin-portfolio.vercel.app/',
       featured: true
     },
@@ -37,7 +37,7 @@ export default function Projects() {
         'Explainable AI (SHAP/LIME) to justify model recommendations',
         'Interactive chatbot interface for farmer advisory'
       ],
-      github: 'https://github.com/ElswinEldho',
+      github: 'https://github.com/ElswinEldho/Smart-Agriculture-AI',
       demo: 'https://elswin-portfolio.vercel.app/',
       featured: true
     },
@@ -54,7 +54,7 @@ export default function Projects() {
         'PDF report & scorecard generator for monthly/annual audits',
         'Historical performance tracking and remediation roadmaps'
       ],
-      github: 'https://github.com/ElswinEldho',
+      github: null,
       demo: 'https://elswin-portfolio.vercel.app/',
       featured: false
     },
@@ -71,7 +71,7 @@ export default function Projects() {
         'Real-time MFCC audio feature extraction using Librosa',
         'Presented at ICIMRBE conference (April 2025)'
       ],
-      github: 'https://github.com/ElswinEldho',
+      github: 'https://github.com/ElswinEldho/Speech_analysis',
       demo: 'https://elswin-portfolio.vercel.app/',
       featured: false
     }
@@ -203,16 +203,18 @@ export default function Projects() {
                 </div>
 
                 {/* Action Links */}
-                <div className="flex items-center justify-start">
-                  <a
-                    href={project.github}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-xs font-mono text-slate-300 hover:text-white transition-colors group/link"
-                  >
-                    <Github className="w-4 h-4 text-indigo-400 group-hover/link:scale-110 transition-transform" />
-                    GitHub Source
-                  </a>
+                <div className="flex items-center justify-start min-h-[28px]">
+                  {project.github && (
+                    <a
+                      href={project.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-xs font-mono text-slate-300 hover:text-white transition-colors group/link"
+                    >
+                      <Github className="w-4 h-4 text-indigo-400 group-hover/link:scale-110 transition-transform" />
+                      GitHub Source
+                    </a>
+                  )}
                 </div>
               </div>
 
