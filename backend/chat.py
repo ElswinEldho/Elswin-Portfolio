@@ -256,6 +256,7 @@ def _build_prompts(query, results):
         for idx, (_, chunk) in enumerate(results, start=1)
     )
 
+
     query_lower = query.lower()
 
     # Detect out-of-scope / personal / casual questions
@@ -466,7 +467,8 @@ def generate_answer(query, results, model_name="qwen3:1.7b"):
         }
     }
 
-    url = "http://localhost:11434/api/chat"
+    ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+    url = f"{ollama_host}/api/chat"
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
