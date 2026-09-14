@@ -379,18 +379,18 @@ def _try_gemini(system_prompt, user_prompt):
     if not gemini_key:
         return None
 
-    # Confirmed working models for newly created API keys
+    # Confirmed working models for newly created API keys (fastest & most reliable first)
     models_to_try = [
+        "gemini-3.1-flash-lite",
         "gemini-3.5-flash",
         "gemini-flash-latest",
-        "gemini-3.1-flash-lite",
         "gemini-flash-lite-latest",
     ]
 
     payload = {
         "system_instruction": {"parts": [{"text": system_prompt}]},
         "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 800}
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 3000}
     }
 
     for model in models_to_try:
@@ -609,13 +609,19 @@ def stream_answer(query, results, model_name="qwen3:1.7b"):
 
     system_prompt, user_prompt = _build_prompts(query, results)
 
-    # 1. Try Cloud LLM API (Groq / OpenAI) if configured
+    # 1. Try Cloud LLM API (Gemini / Groq / OpenAI) if configured
     cloud_stream = _try_cloud_llm_stream(system_prompt, user_prompt)
     if cloud_stream:
         try:
-            for token in cloud_stream:
-                if token:
-                    yield f"data: {json.dumps({'token': token})}\n\n"
+            import time
+            for full_text in cloud_stream:
+                if full_text:
+                    # Stream tokens/words smoothly to replicate Qwen 3 live typing experience
+                    chunks = re.split(r'(\s+)', full_text)
+                    for chunk in chunks:
+                        if chunk:
+                            yield f"data: {json.dumps({'token': chunk})}\n\n"
+                            time.sleep(0.012)
             yield f"data: {json.dumps({'done': True})}\n\n"
             return
         except Exception as e:

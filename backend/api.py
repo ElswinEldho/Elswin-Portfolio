@@ -6,7 +6,22 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 # Ensure current directory is in sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(_current_dir)
+
+# Load local .env file if present
+_env_path = os.path.join(_current_dir, ".env")
+if os.path.exists(_env_path):
+    try:
+        with open(_env_path, "r", encoding="utf-8") as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _v = _line.split("=", 1)
+                    if _k.strip() not in os.environ:
+                        os.environ[_k.strip()] = _v.strip()
+    except Exception:
+        pass
 
 from chat import VectorSearch, stream_answer, generate_answer
 
@@ -80,7 +95,7 @@ async def llm_test():
     # Test Gemini
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if gemini_key:
-        models_to_try = ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-flash-lite-latest"]
+        models_to_try = ["gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
         gemini_result = {"status": "error", "detail": "all models failed"}
         for model in models_to_try:
             api_url = (
