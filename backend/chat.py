@@ -365,83 +365,41 @@ def _fallback_smart_answer(query, results):
     return "\n\n".join(formatted_facts)
 
 
-def _try_cloud_llm_stream(system_prompt, user_prompt):
+def _try_groq_stream(system_prompt, user_prompt):
     """
-    Attempts to call Groq API, Gemini API, or OpenAI API if environment keys are configured.
-    Returns a generator yielding text tokens, or None if no cloud key is set/call fails.
+    Calls Groq API (llama-3.3-70b-versatile) if GROQ_API_KEY is set.
+    Returns a streaming generator yielding text tokens, or None on failure.
+    Groq is the PRIMARY cloud LLM — fast, free, and high quality.
     """
     import urllib.request
     import urllib.error
 
-    groq_key = os.environ.get("GROQ_API_KEY")
-    gemini_key = os.environ.get("GEMINI_API_KEY")
-    openai_key = os.environ.get("OPENAI_API_KEY")
-
-    if not (groq_key or gemini_key or openai_key):
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not groq_key:
         return None
 
-    # 1. Handle Gemini API if set
-    if gemini_key and not groq_key and not openai_key:
-        api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-        payload = {
-            "contents": [
-                {"role": "user", "parts": [{"text": f"{system_prompt}\n\n{user_prompt}"}]}
-            ]
-        }
-        req = urllib.request.Request(
-            api_url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=15) as response:
-                body = response.read().decode("utf-8")
-                data = json.loads(body)
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    if parts:
-                        text = parts[0].get("text", "")
-                        words = text.split(" ")
-                        def gemini_tokens():
-                            for i, w in enumerate(words):
-                                yield w if i == 0 else " " + w
-                        return gemini_tokens()
-        except Exception as e:
-            print(f"[Warning] Gemini API call failed ({e}).")
-            return None
-
-    # 2. Handle Groq / OpenAI API
-    if groq_key:
-        api_url = "https://api.groq.com/openai/v1/chat/completions"
-        api_key = groq_key
-        model = "llama-3.3-70b-versatile"
-    else:
-        api_url = "https://api.openai.com/v1/chat/completions"
-        api_key = openai_key
-        model = "gpt-3.5-turbo"
-
     payload = {
-        "model": model,
+        "model": "llama-3.3-70b-versatile",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_prompt}
         ],
         "stream": True,
-        "temperature": 0.2
+        "temperature": 0.2,
+        "max_tokens": 800
     }
 
     req = urllib.request.Request(
-        api_url,
+        "https://api.groq.com/openai/v1/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
+            "Authorization": f"Bearer {groq_key}"
         }
     )
 
     try:
-        response = urllib.request.urlopen(req, timeout=15)
+        response = urllib.request.urlopen(req, timeout=30)
         def token_generator():
             try:
                 for line in response:
@@ -463,8 +421,104 @@ def _try_cloud_llm_stream(system_prompt, user_prompt):
                 response.close()
         return token_generator()
     except Exception as e:
-        print(f"[Warning] Cloud LLM API call failed ({e}). Falling back to local/RAG.")
+        print(f"[Warning] Groq API call failed ({e}).")
         return None
+
+
+def _try_cloud_llm_stream(system_prompt, user_prompt):
+    """
+    Priority: Groq → Gemini → OpenAI
+    Returns a generator yielding text tokens, or None if no key is set or all calls fail.
+    """
+    import urllib.request
+    import urllib.error
+
+    # 1. Groq (primary — fastest and free)
+    groq_stream = _try_groq_stream(system_prompt, user_prompt)
+    if groq_stream is not None:
+        return groq_stream
+
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+
+    if not (gemini_key or openai_key):
+        return None
+
+    # 2. Gemini fallback
+    if gemini_key:
+        api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+        payload = {
+            "contents": [
+                {"role": "user", "parts": [{"text": f"{system_prompt}\n\n{user_prompt}"}]}
+            ]
+        }
+        req = urllib.request.Request(
+            api_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as response:
+                body = response.read().decode("utf-8")
+                data = json.loads(body)
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts:
+                        text = parts[0].get("text", "")
+                        words = text.split(" ")
+                        def gemini_tokens():
+                            for i, w in enumerate(words):
+                                yield w if i == 0 else " " + w
+                        return gemini_tokens()
+        except Exception as e:
+            print(f"[Warning] Gemini API call failed ({e}).")
+
+    # 3. OpenAI fallback
+    if openai_key:
+        payload = {
+            "model": "gpt-3.5-turbo",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": user_prompt}
+            ],
+            "stream": True,
+            "temperature": 0.2
+        }
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {openai_key}"
+            }
+        )
+        try:
+            response = urllib.request.urlopen(req, timeout=20)
+            def openai_token_generator():
+                try:
+                    for line in response:
+                        if not line:
+                            continue
+                        line_str = line.decode("utf-8").strip()
+                        if line_str.startswith("data: "):
+                            data_content = line_str[6:].strip()
+                            if data_content == "[DONE]":
+                                break
+                            try:
+                                data = json.loads(data_content)
+                                delta = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                                if delta:
+                                    yield delta
+                            except Exception:
+                                continue
+                finally:
+                    response.close()
+            return openai_token_generator()
+        except Exception as e:
+            print(f"[Warning] OpenAI API call failed ({e}).")
+
+    return None
 
 
 def generate_answer(query, results, model_name="qwen3:1.7b"):
@@ -554,7 +608,8 @@ def stream_answer(query, results, model_name="qwen3:1.7b"):
         except Exception as e:
             print(f"[Warning] Error during cloud stream: {e}")
 
-    # 2. Try Local Ollama
+    # 2. Try Local / Remote Ollama (uses OLLAMA_HOST env var; falls back to localhost)
+    ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
     payload = {
         "model": model_name,
         "messages": [
@@ -569,7 +624,7 @@ def stream_answer(query, results, model_name="qwen3:1.7b"):
         }
     }
 
-    url = "http://localhost:11434/api/chat"
+    url = f"{ollama_host}/api/chat"
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
@@ -610,7 +665,7 @@ def stream_answer(query, results, model_name="qwen3:1.7b"):
 
         yield f"data: {json.dumps({'done': True})}\n\n"
     except Exception as e:
-        print(f"[Notice] Ollama unreachable on cloud server ({e}). Streaming direct RAG answer.")
+        print(f"[Notice] Ollama unreachable ({e}). Streaming direct RAG answer.")
         fallback_text = _fallback_smart_answer(query, results)
         words = fallback_text.split(" ")
         for i, word in enumerate(words):
